@@ -24,11 +24,48 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 library(tidyverse)
 library(viridis)
 library(p8105.datasets)
+library(kableExtra)
 ```
 
 ## Problem 1 
 
+write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
+
+The `instacart` dataset gives infomation about online grocery shopping in 2017 using the grocery service, Instacart. It has `r nrow(instacart)` observations of `r ncol(instacart)` variables, 4 of which are character variables, and 11 of which are integer variables. Some key variables (that we will work on) are as follows: 
+* `order_id`: order number 
+* `product_id`: product number
+* `user_id`: user number
+* `order_number`: sequence number of order for user
+* `product_name` (character): name/type of product
+* `aisle_id`: aisle_id
+* `aisle` (character): sorts of products aisle contains 
+* `department` (character): name of department
+
+(could list first the ones that are self explanatory?)
+
+## note order of key vars
+
+## give illstrative examples of observations ?
+
+To give an example of the dataset, the first 10 observations are shown below in Table 1. 
 ```{r}
-data("instacart")
+head = head(instacart, 10) 
+
+knitr::kable(head, 
+             caption = "Table 1: First 10 Observation of Instacart dataset")
 ```
 
+
+How many aisles are there, and which aisles are the most items ordered from?
+
+```{r}
+aisle = 
+  instacart %>% 
+  group_by(aisle) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n))
+```
+
+There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which  are shown below with the number of inndividual orders(?) 
+
+confused about what each separate observation is 
