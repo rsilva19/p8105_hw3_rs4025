@@ -37,6 +37,7 @@ library(patchwork)
 + plot for prob 1?
 + add labels and titles to all plots! and follow rubric 
 + is "patchwork" pkg already in one of my packages
++ still need to comment on findings of prob 2
 
 ## Problem 1 
 
@@ -285,6 +286,7 @@ plot_2006 =
     x = "Response",
     y = "Data Value")
 
+# plot 2 (2010) 
 plot_2010 = 
   brfss %>% 
   filter( year == 2010, state == "NY") %>% 
@@ -295,16 +297,100 @@ plot_2010 =
     x = "Response",
     y = "Data Value")
 
-plot_2006 + plot_2010 + 
-  ggtitle("Data Value in 2006 and 2010 by Response")
-
+# panel plots
+plot_2006 + plot_2010
 ```
 
 
 
+## Problem 3
+
+# Load, tidy, and otherwise wrangle the data. 
+-- Your final dataset should include all originally observed variables and values; (?)- so dont tidy?? does this mean keep the variables as is?
+-- have useful variable names; 
+-- include a weekday vs weekend variable; 
+-- and encode data with reasonable variable classes. 
+-- Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+way 1: (keeping original variables)
+```{r}
+accel_1 = 
+  read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(day_type = replace( day , 
+                             day %in% c("Saturday", "Sunday"),
+                             "weekend"), 
+         day_type = replace( day_type , 
+                             day %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),
+                             "weekday")) %>% 
+  select( week, day_id, day, day_type, everything())
+```
+
+way 2: tidy to long 
+```{r}
+accel_2 = 
+  read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "minute_num", 
+    values_to = "activity_count", 
+    names_prefix = "activity_") %>% 
+  mutate( minute_num = as.numeric(minute_num), 
+          day_type = replace( day , 
+                             day %in% c("Saturday", "Sunday"),
+                             "weekend"), 
+         day_type = replace( day_type , 
+                             day %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),
+                             "weekday")) %>% 
+  select( week, day_id, day, day_type, everything())
+```
+
+# DESCRIBE DATASET (resulting dataset (e.g. what variables exist, how many observations, etc))
 
 
+# Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
 
+can do for accel 2 but not 1
+```{r}
+# make table wide?
+table_total_activity = 
+  accel_2 %>% 
+  group_by(day_id) %>% 
+  summarize( total_activity = sum(activity_count))
 
+# look for trends
+accel_2 %>% 
+  group_by(day_id) %>% 
+  summarize( total_activity = sum(activity_count)) %>% 
+  ggplot(aes(x = day_id, y = total_activity)) +
+  geom_point()
+```
 
+# Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
 
+# need to make minutes into hours 
+```{r}
+accel_2 %>% 
+  ggplot(aes(x = minute_num, y = activity_count, color = day)) +
+  geom_point() +
+  geom_line(aes(group = day_id))
+
+accel_2 %>% 
+  mutate(hour_conv = minute_num/60, 
+         hour = rep(rep(0:23, each = 60), each = 35)) %>% 
+  ggplot(aes(x = hour, y = activity_count, color = day)) +
+  geom_point() +
+  geom_line(aes(group = day_id))
+  
+  
+  
+  mutate(hour = replace( hour_conv , 
+                             hour_conv < 2, 1 %in% c("Saturday", "Sunday"),
+                             "weekend"), 
+         day_type = replace( day_type , 
+                             day %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),
+                             "weekday")) 
+```
+
+# COMMENT 
