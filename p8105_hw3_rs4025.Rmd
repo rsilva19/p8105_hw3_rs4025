@@ -2,7 +2,7 @@
 title: "p8105_hw3_rs4025"
 author: "Rebecca Silva"
 date: "10/4/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -17,9 +17,10 @@ options(
   ggplot2.continuous.colour = "viridis",
   ggplot2.continuous.fill = "viridis"
 )
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+#scale_colour_discrete = scale_colour_viridis_d
+#scale_fill_discrete = scale_fill_viridis_d
+#theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 library(tidyverse)
 library(viridis)
@@ -27,11 +28,17 @@ library(p8105.datasets)
 library(kableExtra)
 ```
 
+# Questions: 
++ delete/renumber tables 
++ plot for prob 1?
+
+
 ## Problem 1 
 
 write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
 
 The `instacart` dataset gives infomation about online grocery shopping in 2017 using the grocery service, Instacart. It has `r nrow(instacart)` observations of `r ncol(instacart)` variables, 4 of which are character variables, and 11 of which are integer variables. Some key variables (that we will work on) are as follows: 
+
 * `order_id`: order number 
 * `product_id`: product number
 * `user_id`: user number
@@ -47,9 +54,9 @@ The `instacart` dataset gives infomation about online grocery shopping in 2017 u
 
 ## give illstrative examples of observations ?
 
-To give an example of the dataset, the first 10 observations are shown below in Table 1. 
+To give an example of the dataset, the first 3 observations are shown below in Table 1. 
 ```{r}
-head = head(instacart, 10) 
+head = head(instacart, 3) 
 
 knitr::kable(head, 
              caption = "Table 1: First 10 Observation of Instacart dataset")
@@ -61,14 +68,13 @@ How many aisles are there, and which aisles are the most items ordered from?
 ```{r}
 aisle = 
   instacart %>% 
-  group_by(aisle, aisle_id) %>% 
+  group_by(aisle) %>%   ## dont think i need aisle_id
   summarize(n = n()) %>% 
   arrange(desc(n))
 ```
 
-There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which are fresh vegetables and fresh fruits.
+There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which are fresh vegetables, fresh fruits, and packaged vegetables and fruit.
 
-# remove table 
 ```{r}
 knitr::kable(head(aisle,3), 
              caption = "Table 2: Top 3 Most Popular Aisles")
@@ -88,15 +94,34 @@ aisle %>%
     y = "Number of Items")
 
 
+## the correct one?
 aisle %>% 
+  ungroup() %>% 
+  mutate(aisle = forcats::fct_reorder(aisle, n)) %>% 
   filter( n > 10000) %>% 
-  mutate(n_rank = min_rank(desc(n))) %>% 
   ggplot(aes(x = aisle, y = n)) + 
   geom_point() + 
   labs(
     title = "Number of Items by Aisle",
-    x = "Aisle Number",
-    y = "Number of Items")
+    x = "Aisle",
+    y = "Number of Items") +
+  theme(axis.text.x = element_text(angle = 90))
+
+## try faceting by department -- not pretty
+instacart %>% 
+  group_by(department, aisle) %>% 
+  summarize(n = n()) %>% 
+  ungroup() %>% 
+  mutate(aisle = forcats::fct_reorder(aisle, n)) %>% 
+  filter( n > 10000) %>% 
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  facet_grid(. ~ department) + 
+  labs(
+    title = "Number of Items by Aisle",
+    x = "Aisle",
+    y = "Number of Items") +
+  theme(axis.text.x = element_text(angle = 90))
 
 ```
 
@@ -109,11 +134,40 @@ table_aisle =
                       "dog food care", 
                       "packaged vegetables fruits")) %>% 
   group_by(aisle, product_name) %>% 
-  summarise(n = n())
+  summarise(n = n()) %>% 
+  mutate(rank = min_rank(desc(n))) %>% 
+  filter(rank < 4) %>% 
+  arrange(desc(n)) %>% 
+  select(-rank)
+        
+knitr::kable(table_aisle, 
+            caption = "Most popular items from Baking Ingredients, Dog Food Care, and Packaged Vegetables and Fruit")
 
-# use min_rank()
-  
-  
-  
 ```
 
+Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
+
+note: I rounded mean hour to closest hour
+#Q: still dont know if I should leave order_dow as is or covert to day of week w mutate (code is b) 
+```{r}
+mean_table = 
+  instacart %>% 
+  filter( product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  select( product_name, order_dow, order_hour_of_day) %>% 
+  group_by( product_name, order_dow) %>% 
+  summarize(mean = round(mean(order_hour_of_day))) %>% 
+  pivot_wider(
+    names_from = order_dow, 
+    values_from = mean)
+
+#mutate(order_dow = recode(as.character(order_dow), `1` = "Monday", `2` = "Tuesday")) %>%
+
+knitr::kable(mean_table, 
+            caption = "Mean Hour of Day for Orders of Pink Lady Apples and Coffee Ice Cream")
+```
+
+
+
+
+
+## Problem 2 
