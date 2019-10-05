@@ -61,11 +61,59 @@ How many aisles are there, and which aisles are the most items ordered from?
 ```{r}
 aisle = 
   instacart %>% 
-  group_by(aisle) %>% 
+  group_by(aisle, aisle_id) %>% 
   summarize(n = n()) %>% 
   arrange(desc(n))
 ```
 
-There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which  are shown below with the number of inndividual orders(?) 
+There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which are fresh vegetables and fresh fruits.
 
+# remove table 
+```{r}
+knitr::kable(head(aisle,3), 
+             caption = "Table 2: Top 3 Most Popular Aisles")
+```
 confused about what each separate observation is 
+
+Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+## do not know what he wants (cld order by department? no)
+```{r}
+aisle %>% 
+  filter( n > 10000) %>% 
+  ggplot(aes(x = aisle_id, fill = aisle)) + 
+  geom_histogram() + 
+  labs(
+    title = "Number of Items by Aisle",
+    x = "Aisle Number",
+    y = "Number of Items")
+
+
+aisle %>% 
+  filter( n > 10000) %>% 
+  mutate(n_rank = min_rank(desc(n))) %>% 
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  labs(
+    title = "Number of Items by Aisle",
+    x = "Aisle Number",
+    y = "Number of Items")
+
+```
+
+Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r}
+table_aisle = 
+  instacart %>% 
+  filter(aisle %in% c("baking ingredients",
+                      "dog food care", 
+                      "packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarise(n = n())
+
+# use min_rank()
+  
+  
+  
+```
+
