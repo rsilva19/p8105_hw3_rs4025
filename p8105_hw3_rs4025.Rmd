@@ -26,18 +26,23 @@ library(tidyverse)
 library(viridis)
 library(p8105.datasets)
 library(kableExtra)
+library(httr)
+library(jsonlite)
+library(patchwork) 
 ```
 
 # Questions: 
+
 + delete/renumber tables 
 + plot for prob 1?
-
++ add labels and titles to all plots! and follow rubric 
++ is "patchwork" pkg already in one of my packages
 
 ## Problem 1 
 
-write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
+# write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
 
-The `instacart` dataset gives infomation about online grocery shopping in 2017 using the grocery service, Instacart. It has `r nrow(instacart)` observations of `r ncol(instacart)` variables, 4 of which are character variables, and 11 of which are integer variables. Some key variables (that we will work on) are as follows: 
+The `instacart` dataset gives infomation about online grocery shopping in 2017 using the grocery service, Instacart. It has `r nrow(instacart)` observations where each observation represents a specific product from a specific order number. There are `r ncol(instacart)` variables, 4 of which are character variables, and 11 of which are integer variables. Some key variables and ones that we focus on are as follows: 
 
 * `order_id`: order number 
 * `product_id`: product number
@@ -50,20 +55,18 @@ The `instacart` dataset gives infomation about online grocery shopping in 2017 u
 
 (could list first the ones that are self explanatory?)
 
-## note order of key vars
+# note order of key vars
 
-## give illstrative examples of observations ?
+# Q: give illstrative examples of observations ?
 
 To give an example of the dataset, the first 3 observations are shown below in Table 1. 
 ```{r}
 head = head(instacart, 3) 
-
 knitr::kable(head, 
              caption = "Table 1: First 10 Observation of Instacart dataset")
 ```
 
-
-How many aisles are there, and which aisles are the most items ordered from?
+# How many aisles are there, and which aisles are the most items ordered from?
 
 ```{r}
 aisle = 
@@ -79,10 +82,11 @@ There are `r nrow(aisle)` aisles in the online grocery store, the most popular o
 knitr::kable(head(aisle,3), 
              caption = "Table 2: Top 3 Most Popular Aisles")
 ```
-confused about what each separate observation is 
 
-Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
-## do not know what he wants (cld order by department? no)
+
+# Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+
+# Q: do not know what he wants (cld order by department? no)
 ```{r}
 aisle %>% 
   filter( n > 10000) %>% 
@@ -94,7 +98,7 @@ aisle %>%
     y = "Number of Items")
 
 
-## the correct one?
+## the correct one- i think 
 aisle %>% 
   ungroup() %>% 
   mutate(aisle = forcats::fct_reorder(aisle, n)) %>% 
@@ -125,7 +129,7 @@ instacart %>%
 
 ```
 
-Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+# Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
 
 ```{r}
 table_aisle = 
@@ -142,7 +146,6 @@ table_aisle =
         
 knitr::kable(table_aisle, 
             caption = "Most popular items from Baking Ingredients, Dog Food Care, and Packaged Vegetables and Fruit")
-
 ```
 
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
@@ -171,3 +174,137 @@ knitr::kable(mean_table,
 
 
 ## Problem 2 
+
+# Q: format the data to use appropriate variable names? - copy and paste what he has? variable names seem fine but last two are diff -  i changed locationabbr and locationdesc to state and country but maybe should use what he does 
+
+```{r}
+# var names  
+var_names = GET("https://chronicdata.cdc.gov/views/acme-vg9e.json") %>%
+  content("text") %>%
+  fromJSON() %>% 
+  .[["columns"]] %>% 
+  .[["name"]] %>% 
+  .[-23]
+
+brfss_smart2010_2 = 
+  GET("https://chronicdata.cdc.gov/views/acme-vg9e/rows.json") %>% 
+  content("text") %>%
+  fromJSON() %>% 
+  .[["data"]]
+
+row_as_tibble = function(row_as_list, var_names) {
+  var_list = row_as_list[9:30]
+  names(var_list) = var_names 
+  var_list[sapply(var_list, is.null)] <- NULL
+  as_tibble(var_list, validate = FALSE)
+}
+
+brfss_smart2010_2 = 
+  brfss_smart2010_2 %>% 
+  map(.x = ., ~row_as_tibble(.x, var_names)) %>% 
+  bind_rows
+```
+
+my work (not using his code)
+```{r}
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
+  map(.x = ., ~row_as_tibble(.x, var_names)) %>% 
+  bind_rows
+
+
+# data cleaning
+brfss = 
+  janitor::clean_names(brfss_smart2010) %>% 
+  separate(locationdesc, 
+           into = c("state", "county"), 
+           sep = " - ") %>% 
+  select(- locationabbr) %>% 
+  filter( topic == "Overall Health",
+          response %in% c("Poor", "Fair","Good", "Very good", "Excellent")) %>% 
+   mutate(response = forcats::fct_relevel(response, c("Poor", "Fair","Good", "Very good", "Excellent")))
+
+```
+
+# COMMENT on the results of each:
+
+# In 2002, which states were observed at 7 or more locations? What about in 2010?
+
+# Q: doing this wrong bc I get 0 or each 
+
+```{r}
+brfss_2002 = 
+  brfss %>% 
+  filter( year == 2002) %>% 
+  group_by(state, county) %>% 
+  summarize( n_locations = n()) %>% 
+  filter( n_locations >= 7)
+
+brfss_2010 = 
+  brfss %>% 
+  filter( year == 2010) %>% 
+  group_by(state, county) %>% 
+  summarize( n_locations = n()) %>% 
+  filter( n_locations >= 7)
+```
+
+In 2002 all states were observated at 5 locations so no states were observed at 7 or more. On the other hand, in 2010, ... (also get 0)
+
+# Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state.
+# Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+
+```{r}
+brfss_excellent = 
+  brfss %>% 
+  filter( response == "Excellent") %>% 
+  group_by(year, state) %>% 
+  summarize(avg_data_value = mean(data_value,  na.rm = TRUE)) 
+
+brfss_excellent %>% 
+  ggplot(aes( x = year, y = avg_data_value)) + 
+  geom_line(aes(group = state))
+
+# if want color too (not good i think)
+brfss_excellent %>% 
+  ggplot(aes( x = year, y = avg_data_value, color = state)) + 
+  geom_line(aes(group = state))
+```
+
+
+# Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+```{r}
+# plot 1 (2006) 
+plot_2006 = 
+  brfss %>% 
+  filter( year == 2006, state == "NY") %>% 
+  ggplot(aes(x = response, y = data_value)) + 
+  geom_boxplot() +
+  labs(
+    title = "Data Value in 2006 by Response",
+    x = "Response",
+    y = "Data Value")
+
+plot_2010 = 
+  brfss %>% 
+  filter( year == 2010, state == "NY") %>% 
+  ggplot(aes(x = response, y = data_value)) + 
+  geom_boxplot() + 
+  labs(
+    title = "Data Value in 2010 by Response",
+    x = "Response",
+    y = "Data Value")
+
+plot_2006 + plot_2010 + 
+  ggtitle("Data Value in 2006 and 2010 by Response")
+
+```
+
+
+
+
+
+
+
+
+
