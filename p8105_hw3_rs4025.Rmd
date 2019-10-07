@@ -1,7 +1,7 @@
 ---
 title: "p8105_hw3_rs4025"
 author: "Rebecca Silva"
-date: "10/4/2019"
+date: "10/14/2019"
 output: github_document
 ---
 
@@ -26,6 +26,7 @@ library(tidyverse)
 library(viridis)
 library(p8105.datasets)
 library(kableExtra)
+#dont need below if dont have to read in prob 3 the way he does 
 library(httr)
 library(jsonlite)
 library(patchwork) 
@@ -49,20 +50,19 @@ The `instacart` dataset gives infomation about online grocery shopping in 2017 u
 * `product_id`: product number
 * `user_id`: user number
 * `order_number`: sequence number of order for user
-* `product_name` (character): name/type of product
-* `aisle_id`: aisle_id
-* `aisle` (character): sorts of products aisle contains 
-* `department` (character): name of department
+* `order_dow`: day of the week on which order placed (0-7)
+* `order_hour_of_day`: hour of day in which order placed 
+* `product_name` (character): name of product
+* `aisle_id`: aisle number
+* `aisle` (character): sorts/types of products aisle contains 
+* `department` (character): name of department/ product categories
 
-(could list first the ones that are self explanatory?)
-
-# note order of key vars
 
 # Q: give illstrative examples of observations ?
 
-To give an example of the dataset, the first 3 observations are shown below in Table 1. 
+To give an example of the dataset, the first 5 observations are shown below in Table 1. 
 ```{r}
-head = head(instacart, 3) 
+head = head(instacart, 5) 
 knitr::kable(head, 
              caption = "Table 1: First 10 Observation of Instacart dataset")
 ```
@@ -72,61 +72,49 @@ knitr::kable(head,
 ```{r}
 aisle = 
   instacart %>% 
-  group_by(aisle) %>%   ## dont think i need aisle_id
+  group_by(aisle) %>%   
   summarize(n = n()) %>% 
   arrange(desc(n))
 ```
 
-There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which are fresh vegetables, fresh fruits, and packaged vegetables and fruit.
-
-```{r}
-knitr::kable(head(aisle,3), 
-             caption = "Table 2: Top 3 Most Popular Aisles")
-```
+There are `r nrow(aisle)` aisles in the online grocery store, the most popular of which are fresh vegetables (150609 total orders), fresh fruits (150473 total orders), and packaged vegetables and fruit (78493 total orders).
 
 
 # Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
 
 # Q: do not know what he wants (cld order by department? no)
 ```{r}
-aisle %>% 
-  filter( n > 10000) %>% 
-  ggplot(aes(x = aisle_id, fill = aisle)) + 
-  geom_histogram() + 
-  labs(
-    title = "Number of Items by Aisle",
-    x = "Aisle Number",
-    y = "Number of Items")
 
-
-## the correct one- i think 
 aisle %>% 
   ungroup() %>% 
   mutate(aisle = forcats::fct_reorder(aisle, n)) %>% 
   filter( n > 10000) %>% 
   ggplot(aes(x = aisle, y = n)) + 
-  geom_point() + 
+  geom_bar(stat = "identit") + 
   labs(
-    title = "Number of Items by Aisle",
+    title = "Number of Items Ordered in the Most Popular Aisles",
     x = "Aisle",
     y = "Number of Items") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
 
-## try faceting by department -- not pretty
+
+# best one i think
+# by department color
 instacart %>% 
   group_by(department, aisle) %>% 
   summarize(n = n()) %>% 
   ungroup() %>% 
   mutate(aisle = forcats::fct_reorder(aisle, n)) %>% 
   filter( n > 10000) %>% 
-  ggplot(aes(x = aisle, y = n)) + 
-  geom_point() + 
-  facet_grid(. ~ department) + 
+  ggplot(aes(x = aisle, y = n, fill = department)) + 
+  geom_bar(stat = "identity") + 
   labs(
-    title = "Number of Items by Aisle",
+    title = "Number of Items Ordered in the Most Popular Aisles",
     x = "Aisle",
     y = "Number of Items") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
 
 ```
 
@@ -149,7 +137,7 @@ knitr::kable(table_aisle,
             caption = "Most popular items from Baking Ingredients, Dog Food Care, and Packaged Vegetables and Fruit")
 ```
 
-Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
+# Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
 
 note: I rounded mean hour to closest hour
 #Q: still dont know if I should leave order_dow as is or covert to day of week w mutate (code is b) 
@@ -172,8 +160,6 @@ knitr::kable(mean_table,
 
 
 
-
-
 ## Problem 2 
 
 # Q: format the data to use appropriate variable names? - copy and paste what he has? variable names seem fine but last two are diff -  i changed locationabbr and locationdesc to state and country but maybe should use what he does 
@@ -187,7 +173,7 @@ var_names = GET("https://chronicdata.cdc.gov/views/acme-vg9e.json") %>%
   .[["name"]] %>% 
   .[-23]
 
-brfss_smart2010_2 = 
+brfss_smart2010 = 
   GET("https://chronicdata.cdc.gov/views/acme-vg9e/rows.json") %>% 
   content("text") %>%
   fromJSON() %>% 
@@ -200,19 +186,14 @@ row_as_tibble = function(row_as_list, var_names) {
   as_tibble(var_list, validate = FALSE)
 }
 
-brfss_smart2010_2 = 
-  brfss_smart2010_2 %>% 
+brfss_smart2010 = 
+  brfss_smart2010 %>% 
   map(.x = ., ~row_as_tibble(.x, var_names)) %>% 
   bind_rows
 ```
 
 my work (not using his code)
 ```{r}
-brfss_smart2010 = 
-  brfss_smart2010 %>% 
-  map(.x = ., ~row_as_tibble(.x, var_names)) %>% 
-  bind_rows
-
 
 # data cleaning
 brfss = 
@@ -231,25 +212,29 @@ brfss =
 
 # In 2002, which states were observed at 7 or more locations? What about in 2010?
 
-# Q: doing this wrong bc I get 0 or each 
+# Q: county or state? 
 
 ```{r}
+# states at 7 or more locations
+
+# 2002
 brfss_2002 = 
   brfss %>% 
   filter( year == 2002) %>% 
-  group_by(state, county) %>% 
+  group_by(state) %>% 
   summarize( n_locations = n()) %>% 
   filter( n_locations >= 7)
 
+# 2010
 brfss_2010 = 
   brfss %>% 
   filter( year == 2010) %>% 
-  group_by(state, county) %>% 
+  group_by(state) %>% 
   summarize( n_locations = n()) %>% 
   filter( n_locations >= 7)
 ```
 
-In 2002 all states were observated at 5 locations so no states were observed at 7 or more. On the other hand, in 2010, ... (also get 0)
+In 2002, the states `r print(pull(brfss_2002, state))` were observed at 7 or more location and in 2010, 45 states were observed at 7 or more locations, specifically, `r pull(brfss_2010, state)`.  
 
 # Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state.
 # Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
@@ -263,45 +248,98 @@ brfss_excellent =
 
 brfss_excellent %>% 
   ggplot(aes( x = year, y = avg_data_value)) + 
-  geom_line(aes(group = state))
+  geom_line(aes(group = state)) +
+  labs(
+    title = "Mean data value for each state from 2002 to 2010",
+    x = "Year",
+    y = "Mean Data Value") +
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
 
 # if want color too (not good i think)
 brfss_excellent %>% 
   ggplot(aes( x = year, y = avg_data_value, color = state)) + 
-  geom_line(aes(group = state))
+  geom_line(aes(group = state)) + 
+  theme(legend.position = "right") +
+  labs(
+    title = "Mean data value for each state from 2002 to 2010",
+    x = "Year",
+    y = "Mean Data Value") +
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
 ```
 
+Commont: 
+The “spaghetti” plot of average value over time within a state shows how varied the mean data value each year can be for the majority of states. Although adding color is not helpful in identifying which states belongs to each line, it helps show how the lines are frequently crossing each other, further depicting the up and down nature of average values for each state. 
 
 # Make a two-panel plot showing, for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
 
+# Q: could do boxlot or density 
+
 ```{r}
-# plot 1 (2006) 
+# plot 1 (2006) - density
 plot_2006 = 
   brfss %>% 
-  filter( year == 2006, state == "NY") %>% 
-  ggplot(aes(x = response, y = data_value)) + 
-  geom_boxplot() +
-  labs(
-    title = "Data Value in 2006 by Response",
-    x = "Response",
-    y = "Data Value")
+    filter( year == 2006, state == "NY") %>% 
+    ggplot(aes(x = data_value, fill = response)) +
+    geom_density(alpha = .5) +
+    labs(
+      title = "Data Value in 2006 by Response",
+      x = "Response",
+      y = "Data Value") +
+    viridis::scale_fill_viridis(discrete = TRUE) +
+  theme(legend.position = "none")
 
 # plot 2 (2010) 
 plot_2010 = 
   brfss %>% 
-  filter( year == 2010, state == "NY") %>% 
-  ggplot(aes(x = response, y = data_value)) + 
-  geom_boxplot() + 
-  labs(
-    title = "Data Value in 2010 by Response",
-    x = "Response",
-    y = "Data Value")
+    filter( year == 2010, state == "NY") %>% 
+    ggplot(aes(x = data_value, fill = response)) +
+    geom_density(alpha = .5) +
+    labs(
+      title = "Data Value in 2010 by Response",
+      x = "Response",
+      y = "Data Value") +
+    viridis::scale_fill_viridis(discrete = TRUE)
 
-# panel plots
+# panel plots - density
 plot_2006 + plot_2010
+
+# panel plots - boxplot
+boxplot_2006 + boxplot_2010
 ```
 
+no panel - instead facet 
+```{r}
+# facet by year, density plot
+brfss %>% 
+  filter( year %in% c(2006, 2010)) %>% 
+  ggplot(aes(x = data_value, fill = response)) +
+  geom_density(alpha = .5) + 
+  facet_grid(~year) +
+  labs(
+      title = "Density of Data Value by Response",
+      x = "Response",
+      y = "Data Value") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
 
+By looking at the distribution of responses from 2006 and 2010 next to one another, we can see that for each response type, data values have very similar distributions. The most difference we see if how sharp a peak is, meaning the are most observed data value at one specific point, but the peaks for each response still seem to be around the same data values. To compare the medians and other specific values we can look at a boxplot too. 
+
+```{r}
+brfss %>% 
+  filter( year %in% c(2006, 2010)) %>% 
+  ggplot(aes(x = response, y = data_value, color = response)) + 
+    geom_boxplot() + 
+  facet_grid(~year) +
+  labs(
+      title = "Boxplot of Data Value by Response",
+      x = "Response",
+      y = "Data Value") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplots also shows us that apart from data values on the tails of each distribution, the center spread of data values is very similar in 2006 and 2010 for each response level. 
 
 ## Problem 3
 
