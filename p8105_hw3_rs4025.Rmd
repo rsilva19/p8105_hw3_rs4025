@@ -32,12 +32,12 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 + delete/renumber tables 
 + plot for prob 1?
 + add labels and titles to all plots! and follow rubric 
-+ is "patchwork" pkg already in one of my packages
-+ still need to comment on findings of prob 2
 
 ## Problem 1 
 
-# write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
+```{r}
+data("instacart")
+```
 
 The `instacart` dataset gives infomation about online grocery shopping in 2017 using the grocery service, Instacart. It has `r nrow(instacart)` observations where each observation represents a specific product from a specific order number. There are `r ncol(instacart)` variables, 4 of which are character variables, and 11 of which are integer variables. Some key variables and ones that we focus on are as follows: 
 
@@ -45,7 +45,7 @@ The `instacart` dataset gives infomation about online grocery shopping in 2017 u
 * `product_id`: product number
 * `user_id`: user number
 * `order_number`: sequence number of order for user
-* `order_dow`: day of the week on which order placed (0-7)
+* `order_dow`: day of the week on which order placed (0-6). *Note*: we will assume 0 is Saturday and 6 is Friday. 
 * `order_hour_of_day`: hour of day in which order placed 
 * `product_name` (character): name of product
 * `aisle_id`: aisle number
@@ -55,13 +55,14 @@ The `instacart` dataset gives infomation about online grocery shopping in 2017 u
 
 To give an example of the dataset, the first 3 observations are shown below in Table 1. 
 ```{r}
-head = head(instacart, 3) 
-knitr::kable(head, 
-             caption = "Table 1: First 3 Observations of Instacart dataset")
+# table of head of ds
+head(instacart, 3)  %>% 
+  knitr::kable(caption = "Table 1: First 3 Observations of Instacart dataset")
 ```
 For a more illustrative example, let Bob be a costumer on Instacart. Bob's order of the `product` Bulgarian yogurt from the `aisle` yogurt and `department` dairy eggs, ordered on the 4th day of the week at hour 10 (12pm), represents one observation in the sata set. Other variables not listed in this example are included in the dataset, although we do not focus on them in our exploration. 
 
 ```{r}
+# number of aisles and orders
 aisle = 
   instacart %>% 
   group_by(aisle) %>%   
@@ -88,11 +89,12 @@ instacart %>%
     y = "Number of Items", 
     caption = "Data from p8105.datasets package") +
   theme(legend.position = "right", 
-        axis.text.x = element_text(angle = 90),
-        plot.title = element_text(hjust = 0.5))
+        plot.title = element_text(hjust = 0.5)) + 
+  coord_flip()
 
 ```
 
+The plot demonstrates that following vegetables and fruits (all in the department, produce), dairy is the most popular product type. This makes sense because produce and dairy products go bad more frequently and they are are a staple in a many kitches, so the number of items ordered is the largest. Although color does not help us identify every single aisle's department well, it helps us distinguish the top two departments (produce and dairy), which is interesting to see. 
 
 ```{r}
 table_aisle = 
@@ -108,14 +110,17 @@ table_aisle =
   select(-rank)
         
 knitr::kable(table_aisle, 
-            caption = "Most popular items from Baking Ingredients,
+            caption = "Table 2: Most popular items from Baking Ingredients,
             Dog Food Care, <br>
-            and Packaged Vegetables and Fruit")
+            and Packaged Vegetables and Fruit", 
+            col.names = c("Aisle",
+                           "Product",
+                           "Number of Orders"))
 ```
 
-# Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
+Table 2 shows us the most popular products in 3 specific aisles. It is interesting to see that "Organic Baby Spinach" is by far the most popular packaged produce, having almost twice as many orders as the second and third most popular items in that aisle which are "Organic Raspberries" and "Organic Blueberries", respectively. 
 
-note: I rounded mean hour to closest hour
+
 #Q: still dont know if I should leave order_dow as is or covert to day of week w mutate (code is b) - can make an assumption
 ```{r}
 mean_table = 
@@ -128,18 +133,30 @@ mean_table =
     names_from = order_dow, 
     values_from = mean)
 
-#mutate(order_dow = recode(as.character(order_dow), `1` = "Monday", `2` = "Tuesday")) %>%
+mean_table = 
+  instacart %>% 
+  filter( product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  select( product_name, order_dow, order_hour_of_day) %>% 
+  group_by( product_name, order_dow) %>% 
+  summarize(mean = round(mean(order_hour_of_day))) %>% 
+  pivot_wider(
+    names_from = order_dow, 
+    values_from = mean)
 
 knitr::kable(mean_table, 
-            caption = "Mean Hour of Day for Orders of Pink Lady Apples <br> and Coffee Ice Cream")
+            caption = "Table 3: Mean Hour of Day (Military time) for Orders of Pink Lady Apples <br> and Coffee Ice Cream", 
+            col.names = c("Produce",
+                           "Saturday",
+                           "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))
 ```
 
-
+Note: In Table 3, I rounded mean hour to closest hour and assumed the week started on a Saturday (day 0 = Saturday). Additionally, I left the mean hour of day in military time so it would be easier to compare the groups. Ultimately, the table shows that Pink Lady Apples are on average ordered earlier than Coffee Ice Cream but not by that many hours. I would have expected the mean hour of day to order ice cream to be later in the day, around night time, but instead it is around early afternoon. 
 
 ## Problem 2 
 
 ```{r}
 # data cleaning
+data("brfss_smart2010")
 brfss = 
   janitor::clean_names(brfss_smart2010) %>% 
   separate(locationdesc, 
@@ -162,30 +179,16 @@ brfss_2002 =
   summarize( n_locations = n_distinct(county)) %>%  
   filter(n_locations >= 7)
 
-brfss_2002 = 
-  brfss %>% 
-  filter( year == 2002) %>% 
-  group_by(state, county) 
-
-%>% 
-  summarize( n = n_distinct(county))
-
-
-%>% 
-  summarize( n_locations = n(county)) %>% 
-  filter( n_locations >= 7)
-
 # 2010
 brfss_2010 = 
   brfss %>% 
   filter( year == 2010) %>% 
   group_by(state) %>% 
-  summarize( n_locations = n()) %>% 
-  filter( n_locations >= 7)
+  summarize( n_locations = n_distinct(county)) %>%  
+  filter(n_locations >= 7)
 ```
 
-In 2002, the states `r pull(brfss_2002, state)` were observed at 7 or more location and in 2010, 45 states were observed at 7 or more locations, specifically, `r pull(brfss_2010, state)`.  
-
+In 2002, the states `r pull(brfss_2002, state)` were observed at 7 or more location and in 2010, 14 states were observed at 7 or more locations, specifically, `r pull(brfss_2010, state)`.  
 
 ```{r}
 # data set for excellent responses
@@ -207,8 +210,7 @@ brfss_excellent %>%
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-The “spaghetti” plot of average value over time within a state shows how varied the mean data value each year can be for the majority of states. Although adding color is not helpful in identifying which states belongs to each line, it helps show how the lines are frequently crossing each other, further depicting the up and down nature of average values for each state. 
-
+The “spaghetti” plot of average value over time within a state shows how varied the mean data value each year can be for the majority of states. Although adding color is not helpful in identifying which states belongs to each line, it helps show how the lines are frequently crossing each other, further depicting the up and down nature of average values for each state. This makes sense because I would assume response values are generally independent of state. 
  
 ```{r}
 # facet by year, boxplot plot
@@ -225,7 +227,7 @@ brfss %>%
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
-By looking at the distribution of responses from 2006 and 2010 next to one another, we can see that for each response type, data values share similar ranges of values but have differently shaped distributions and peak around the  different values within a similar ranges. For example, for the "excellent" response type, in 2006 the distribution of data values is right skewed while in 2010 it is left skewed, and the median value for excellent is higher in 2010 than 2006. It is interesting to see that "poor" responses show the least variability in data values and "good"  and "very good" responses seem to vary the most.
+By looking at the distribution of responses from 2006 and 2010 next to one another, we can see that for each response type, data values share similar ranges of values but have differently shaped distributions and peak around the  different values within their respective similar range. For example, for the "excellent" response type, in 2006 the distribution of data values is right skewed while in 2010 it is left skewed, and the median value for excellent is higher in 2010 than 2006. It is interesting to see that "poor" responses show the least variability in data values and "good"  and "very good" responses seem to vary the most.
 
 ## Problem 3
 
