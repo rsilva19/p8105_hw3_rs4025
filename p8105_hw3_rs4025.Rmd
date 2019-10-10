@@ -6,6 +6,11 @@ output: github_document
 ---
 
 ```{r setup, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(p8105.datasets)
+library(kableExtra)
+
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -17,15 +22,9 @@ options(
   ggplot2.continuous.colour = "viridis",
   ggplot2.continuous.fill = "viridis"
 )
-#scale_colour_discrete = scale_colour_viridis_d
-#scale_fill_discrete = scale_fill_viridis_d
-#theme_set(theme_minimal() + theme(legend.position = "bottom"))
-
-
-library(tidyverse)
-library(viridis)
-library(p8105.datasets)
-library(kableExtra)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 # Questions: 
@@ -160,7 +159,20 @@ brfss_2002 =
   brfss %>% 
   filter( year == 2002) %>% 
   group_by(state) %>% 
-  summarize( n_locations = n()) %>% 
+  summarize( n_locations = n_distinct(county)) %>%  
+  filter(n_locations >= 7)
+
+brfss_2002 = 
+  brfss %>% 
+  filter( year == 2002) %>% 
+  group_by(state, county) 
+
+%>% 
+  summarize( n = n_distinct(county))
+
+
+%>% 
+  summarize( n_locations = n(county)) %>% 
   filter( n_locations >= 7)
 
 # 2010
