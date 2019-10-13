@@ -223,13 +223,14 @@ accel =
     names_to = "minute_num", 
     values_to = "activity_count", 
     names_prefix = "activity_") %>% 
-  mutate( minute_num = as.numeric(minute_num), 
+  mutate( minute_num = as.numeric(minute_num),
           day_type = replace( day , 
                              day %in% c("Saturday", "Sunday"),
                              "weekend"), 
          day_type = replace( day_type , 
                              day %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),
-                             "weekday")) %>% 
+                             "weekday"),
+         day = forcats::fct_relevel(day, c("Saturday", "Sunday","Monday", "Tuesday", "Wednesday", "Thursday", "Friday"))) %>% 
   select( week, day_id, day, day_type, everything())
 ```
 
@@ -237,7 +238,7 @@ The data set `accel` reports accelerometer data of a 63 year-old man for 5 weeks
 
 * `week`: numeric, representing week number (1-5) 
 * `day_id`: numeric, number of day (1-35) with no significant meaning to ordering 
-* `day`: character, weekday
+* `day`: factor, weekday (Saturday- level 1, to Friday- level 7)
 * `day_type`: character, values: weekend or weekday
 * `minute_num`: numeric, minute number (1-1440)
 * `activity_count`: numeric, data reported on activity 
